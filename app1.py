@@ -42,7 +42,7 @@ with tab1:
         gender = st.selectbox("Gender", ["Male", "Female"])
         country = st.selectbox("Country", ["France", "Germany", "Spain"])
 
-    # --- الجزء بتاعك الأصلي رجع تاني ---
+    # Feature Engineering Section
     gender_female = 1 if gender == "Female" else 0
     country_germany = 1 if country == "Germany" else 0
     country_spain = 1 if country == "Spain" else 0
@@ -65,6 +65,7 @@ with tab1:
     st.write("---")
     if st.button("Predict Customer Status 🔍"):
         try:
+            # 1. ترتيب العواميد الأساسي (16 عمود)
             cols = [
                 "credit_score", "age", "tenure", "balance", "products_number", "credit_card",
                 "active_member", "estimated_salary", "balance_salary_ratio", "high_balance",
@@ -73,14 +74,17 @@ with tab1:
             ]
             input_data = input_data[cols]
             
-            # --- السر كله في كلمة .values اللي هنا دي عشان تمنع الإيرور ---
-            scaled_features = scaler.transform(input_data.values)
-            prediction = model.predict(scaled_features)
+            # 2. تحديد العواميد الرقمية الـ 8 اللي الـ Scaler مستنيها
+            numeric_cols = [
+                "credit_score", "age", "tenure", "balance", "products_number", 
+                "estimated_salary", "balance_salary_ratio", "balance_log"
+            ]
             
-            # --- السحر هنا: كود الديمو عشان الشاشة تنور أحمر ---
-            if age >= 60 and balance >= 100000:
-                prediction = [1]
-            # ----------------------------------------------------
+            # 3. عمل Scaling للعواميد الرقمية بس (استخدمنا .values عشان نتفادى إيرور الأسماء)
+            input_data[numeric_cols] = scaler.transform(input_data[numeric_cols].values)
+            
+            # 4. التوقع باستخدام الـ 16 عمود كلهم (استخدمنا .values عشان نتفادى إيرور الأسماء مع الموديل)
+            prediction = model.predict(input_data.values)
             
             if "total_predictions" not in st.session_state:
                 st.session_state["total_predictions"] = 154
@@ -90,11 +94,13 @@ with tab1:
             
             st.subheader("Results:")
             result = str(prediction[0]).strip()
+            
             if result in ["1", "1.0", "Yes", "yes", "True"]:
                 st.session_state["total_churns"] += 1
                 st.error("⚠️ The customer is highly likely to Churn (Leave the bank/company).")
             else:
                 st.success("✅ The customer is stable (Likely to Stay).")
+                
         except Exception as e:
             st.error(f"Prediction Pipeline Error: {e}")
 
