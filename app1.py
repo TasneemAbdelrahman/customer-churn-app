@@ -74,7 +74,7 @@ with tab1:
                 "country_Spain", "age_group_31-45"
             ]
             input_data = input_data[cols]
-            scaled_features = scaler.transform(input_data)
+            scaled_features = scaler.transform(input_data.values)
             prediction = model.predict(scaled_features)
             
             if "total_predictions" not in st.session_state:
