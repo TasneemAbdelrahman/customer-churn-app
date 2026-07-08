@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 import joblib
 
+
 # 1. Page Configuration
 st.set_page_config(
     page_title="Customer Churn System & Monitor", 
@@ -12,13 +13,17 @@ st.set_page_config(
 
 @st.cache_resource
 def load_assets():
+    import os
+    st.write("Files:", os.listdir())
+
     model = joblib.load("final_churn_model (1).pkl")
     scaler = joblib.load("scaler.pkl")
+
     return model, scaler
 
 model, scaler = load_assets()
 
-# 2. App Navigation Tabs
+# 3. App Navigation Tabs
 tab1, tab2 = st.tabs(["🔮 Churn Prediction App", "📈 System Performance & Monitor"])
 
 with tab1:
@@ -42,44 +47,38 @@ with tab1:
         gender = st.selectbox("Gender", ["Male", "Female"])
         country = st.selectbox("Country", ["France", "Germany", "Spain"])
 
+    # Feature Engineering Section
+    gender_female = 1 if gender == "Female" else 0
+    country_germany = 1 if country == "Germany" else 0
+    country_spain = 1 if country == "Spain" else 0
+
+    balance_salary_ratio = balance / (estimated_salary + 1)
+    high_balance = 1 if balance > 100000 else 0
+    balance_log = np.log1p(balance)
+    active_with_card = 1 if (active_member == 1 and credit_card == 1) else 0
+    age_group_31_45 = 1 if 31 <= age <= 45 else 0
+
+    input_data = pd.DataFrame({
+        "credit_score": [credit_score], "age": [age], "tenure": [tenure], "balance": [balance],
+        "products_number": [products_number], "credit_card": [credit_card], "active_member": [active_member],
+        "estimated_salary": [estimated_salary], "balance_salary_ratio": [balance_salary_ratio],
+        "high_balance": [high_balance], "balance_log": [balance_log], "active_with_card": [active_with_card],
+        "gender_Female": [gender_female], "country_Germany": [country_germany], "country_Spain": [country_spain],
+        "age_group_31-45": [age_group_31_45]
+    })
+
     st.write("---")
-    
     if st.button("Predict Customer Status 🔍"):
         try:
-            # تجهيز الداتا بنفس الأسماء اللي الموديل اتدرب عليها بالظبط
-            input_data = pd.DataFrame({
-                "CreditScore": [credit_score],
-                "Geography_France": [1 if country == "France" else 0],
-                "Geography_Germany": [1 if country == "Germany" else 0],
-                "Geography_Spain": [1 if country == "Spain" else 0],
-                "Gender_Female": [1 if gender == "Female" else 0],
-                "Gender_Male": [1 if gender == "Male" else 0],
-                "Age": [age],
-                "Tenure": [tenure],
-                "Balance": [balance],
-                "NumOfProducts": [products_number],
-                "HasCrCard": [credit_card],
-                "IsActiveMember": [active_member],
-                "EstimatedSalary": [estimated_salary]
-            })
-
-            # ترتيب العواميد زي ما الموديل متعود عليها
             cols = [
-                "CreditScore", "Age", "Tenure", "Balance", "NumOfProducts", 
-                "HasCrCard", "IsActiveMember", "EstimatedSalary", 
-                "Geography_France", "Geography_Germany", "Geography_Spain", 
-                "Gender_Female", "Gender_Male"
+                "credit_score", "age", "tenure", "balance", "products_number", "credit_card",
+                "active_member", "estimated_salary", "balance_salary_ratio", "high_balance",
+                "balance_log", "active_with_card", "gender_Female", "country_Germany",
+                "country_Spain", "age_group_31-45"
             ]
             input_data = input_data[cols]
-            
-            # التوقع
             scaled_features = scaler.transform(input_data)
             prediction = model.predict(scaled_features)
-            
-            # --- السحر هنا: كود الديمو عشان الشاشة تنور أحمر ---
-            if age >= 60 and balance >= 100000:
-                prediction = [1]
-            # ----------------------------------------------------
             
             if "total_predictions" not in st.session_state:
                 st.session_state["total_predictions"] = 154
@@ -88,15 +87,11 @@ with tab1:
             st.session_state["total_predictions"] += 1
             
             st.subheader("Results:")
-            
-            result = str(prediction[0]).strip()
-            
-            if result in ["1", "1.0", "Yes", "yes", "True"]:
+            if prediction[0] == 1:
                 st.session_state["total_churns"] += 1
                 st.error("⚠️ The customer is highly likely to Churn (Leave the bank/company).")
             else:
                 st.success("✅ The customer is stable (Likely to Stay).")
-        
         except Exception as e:
             st.error(f"Prediction Pipeline Error: {e}")
 
@@ -107,11 +102,7 @@ with tab2:
     total_preds = st.session_state.get("total_predictions", 154)
     churn_count = st.session_state.get("total_churns", 34)
     stay_count = total_preds - churn_count
-    
-    if total_preds > 0:
-        churn_rate = (churn_count / total_preds) * 100
-    else:
-        churn_rate = 0.0
+    churn_rate = (churn_count / total_preds) * 100
     
     kpi1, kpi2, kpi3 = st.columns(3)
     kpi1.metric(label="Total Logged Inputs Checked", value=total_preds)
