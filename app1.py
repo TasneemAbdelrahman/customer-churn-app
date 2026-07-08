@@ -72,7 +72,9 @@ with tab1:
         try:
             cols = [
                 "credit_score", "age", "tenure", "balance", "products_number", "credit_card",
-                "active_member", "estimated_salary"
+                "active_member", "estimated_salary", "balance_salary_ratio", "high_balance",
+                "balance_log", "active_with_card", "gender_Female", "country_Germany",
+                "country_Spain", "age_group_31-45"
             ]
             input_data = input_data[cols]
             scaled_features = scaler.transform(input_data)
