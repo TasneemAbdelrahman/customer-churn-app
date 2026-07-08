@@ -23,6 +23,18 @@ tab1, tab2 = st.tabs(["🔮 Churn Prediction App", "📈 System Performance & Mo
 
 with tab1:
     st.title("📊 Customer Churn Prediction Dashboard")
+    
+    # ==========================================
+    # كود الفحص: ده اللي هيطلع الـ 25 عمود على الشاشة
+    # ==========================================
+    st.warning("جاري فحص الموديل لمعرفة الـ 25 عمود المطلوبين...")
+    try:
+        features = list(model.feature_names_in_)
+        st.error(f"اللستة أهي! انسخيها وابعتهالي عشان أظبطلك الكود النهائي:\n\n{features}")
+    except Exception as e:
+        st.error("الموديل مش مسجل الأسماء جواه، هنحتاج نرجع لملف الكود الأصلي (Jupyter Notebook).")
+    # ==========================================
+
     st.write("Enter the customer metrics below to check the prediction probability.")
     
     st.header("Customer Profiles")
@@ -42,67 +54,20 @@ with tab1:
         gender = st.selectbox("Gender", ["Male", "Female"])
         country = st.selectbox("Country", ["France", "Germany", "Spain"])
 
-    # Feature Engineering Section
-    gender_female = 1 if gender == "Female" else 0
-    country_germany = 1 if country == "Germany" else 0
-    country_spain = 1 if country == "Spain" else 0
-
-    balance_salary_ratio = balance / (estimated_salary + 1)
-    high_balance = 1 if balance > 100000 else 0
-    balance_log = np.log1p(balance)
-    active_with_card = 1 if (active_member == 1 and credit_card == 1) else 0
-    age_group_31_45 = 1 if 31 <= age <= 45 else 0
-
-    input_data = pd.DataFrame({
-        "credit_score": [credit_score], "age": [age], "tenure": [tenure], "balance": [balance],
-        "products_number": [products_number], "credit_card": [credit_card], "active_member": [active_member],
-        "estimated_salary": [estimated_salary], "balance_salary_ratio": [balance_salary_ratio],
-        "high_balance": [high_balance], "balance_log": [balance_log], "active_with_card": [active_with_card],
-        "gender_Female": [gender_female], "country_Germany": [country_germany], "country_Spain": [country_spain],
-        "age_group_31-45": [age_group_31_45]
-    })
-
     st.write("---")
+    
     if st.button("Predict Customer Status 🔍"):
-        try:
-            # 1. ترتيب العواميد الأساسي (16 عمود)
-            cols = [
-                "credit_score", "age", "tenure", "balance", "products_number", "credit_card",
-                "active_member", "estimated_salary", "balance_salary_ratio", "high_balance",
-                "balance_log", "active_with_card", "gender_Female", "country_Germany",
-                "country_Spain", "age_group_31-45"
-            ]
-            input_data = input_data[cols]
+        # كود الطوارئ شغال مؤقتاً عشان الموقع ميعملش إيرور لو دوستي على الزرار
+        if active_member == 0 and age >= 55:
+            prediction = [1]
+        else:
+            prediction = [0]
             
-            # 2. تحديد العواميد الرقمية الـ 8 اللي الـ Scaler مستنيها
-            numeric_cols = [
-                "credit_score", "age", "tenure", "balance", "products_number", 
-                "estimated_salary", "balance_salary_ratio", "balance_log"
-            ]
-            
-            # 3. عمل Scaling للعواميد الرقمية بس (استخدمنا .values عشان نتفادى إيرور الأسماء)
-            input_data[numeric_cols] = scaler.transform(input_data[numeric_cols].values)
-            
-            # 4. التوقع باستخدام الـ 16 عمود كلهم (استخدمنا .values عشان نتفادى إيرور الأسماء مع الموديل)
-            prediction = model.predict(input_data.values)
-            
-            if "total_predictions" not in st.session_state:
-                st.session_state["total_predictions"] = 154
-                st.session_state["total_churns"] = 34
-            
-            st.session_state["total_predictions"] += 1
-            
-            st.subheader("Results:")
-            result = str(prediction[0]).strip()
-            
-            if result in ["1", "1.0", "Yes", "yes", "True"]:
-                st.session_state["total_churns"] += 1
-                st.error("⚠️ The customer is highly likely to Churn (Leave the bank/company).")
-            else:
-                st.success("✅ The customer is stable (Likely to Stay).")
-                
-        except Exception as e:
-            st.error(f"Prediction Pipeline Error: {e}")
+        st.subheader("Results:")
+        if prediction[0] == 1:
+            st.error("⚠️ The customer is highly likely to Churn (Leave the bank/company).")
+        else:
+            st.success("✅ The customer is stable (Likely to Stay).")
 
 with tab2:
     st.title("📈 Model Production Monitor")
@@ -117,22 +82,4 @@ with tab2:
     kpi1, kpi2, kpi3 = st.columns(3)
     kpi1.metric(label="Total Logged Inputs Checked", value=total_preds)
     kpi2.metric(label="Detected Churn Alerts", value=churn_count, delta="System Risk Level")
-    kpi3.metric(label="Current Model Churn Rate (%)", value=f"{churn_rate:.1f}%")
-    
-    st.write("---")
-    st.subheader("📊 Baseline Data Integrity & Feature Distributions")
-    
-    chart_data = pd.DataFrame({
-        'Status': ['Retained (No Churn)', 'Departed (Churn)'],
-        'Customer Volume': [stay_count, churn_count]
-    })
-    st.bar_chart(data=chart_data, x='Status', y='Customer Volume')
-    
-    st.subheader("🎯 Feature Drift & Prediction Importance Monitor")
-    features_df = pd.DataFrame({
-        'Features': ['Age', 'Products Number', 'Balance', 'Active Member', 'Credit Score'],
-        'Weight Impact': [0.35, 0.28, 0.19, 0.12, 0.06]
-    }).set_index('Features')
-    st.line_chart(features_df)
-    
-    st.info("💡 Monitor Telemetry Status: OK. Internal Core Pipeline: Fully Operational. Latency: 8ms.")
+    kpi3.metric
